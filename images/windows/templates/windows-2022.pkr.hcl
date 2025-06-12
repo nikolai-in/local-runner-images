@@ -230,13 +230,13 @@ source "proxmox-iso" "base" {
 
   // BOOT MEDIA CONFIGURATION
   boot_iso {
-    iso_file         = var.windows_iso
+    iso_file         = "${var.iso_storage}:iso/${var.windows_iso}"
     iso_storage_pool = var.iso_storage
     unmount          = true
   }
 
   additional_iso_files {
-    iso_file         = var.virtio_win_iso
+    iso_file         = "${var.iso_storage}:iso/${var.virtio_win_iso}"
     iso_storage_pool = var.iso_storage
     unmount          = true
     type             = "sata"
