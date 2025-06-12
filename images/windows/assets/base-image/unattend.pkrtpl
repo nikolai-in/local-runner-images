@@ -73,8 +73,8 @@
             xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <UserData>
-                <AcceptEula>true</AcceptEula> %{ if var.license_key != "" } <ProductKey>
-                    <Key>${var.license_key}</Key>
+                <AcceptEula>true</AcceptEula> %{ if license_key != "" } <ProductKey>
+                    <Key>${license_key}</Key>
                     <WillShowUI>OnError</WillShowUI>
                 </ProductKey>%{ endif } </UserData>
             <DiskConfiguration>
