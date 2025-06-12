@@ -110,6 +110,12 @@ variable "windows_iso" {
   default     = "en-us_windows_server_2022_eval_x64fre.iso"
 }
 
+variable "image_index" {
+  type        = string
+  description = "Image index in the Windows ISO file"
+  default     = "4"
+}
+
 variable "license_key" {
   type        = string
   description = "Windows license key, leave empty for evaluation version"
@@ -194,7 +200,7 @@ variable "temp_dir" {
 
 variable "install_password" {
   type      = string
-  default   = ""
+  default   = "GetsugaTenshou"
   sensitive = true
 }
 
@@ -243,9 +249,9 @@ source "proxmox-iso" "base" {
       "autounattend.xml" = templatefile("../assets/base-image/unattend.pkrtpl", {
         password           = var.winrm_password,
         cdrom_drive        = var.cdrom_drive,
-        user_data          = var.user_data,
+        license_key        = var.license_key,
         timezone           = var.timezone,
-        index              = var.image_name
+        index              = var.image_index
         virtio_cdrom_drive = var.virtio_cdrom_drive
       })
     }
@@ -257,12 +263,10 @@ source "proxmox-iso" "base" {
   }
 
   // VM TEMPLATE CONFIGURATION
-  template_name           = var.base_template_name
-  vm_name                 = "win-instance-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
-  template_description    = "Windows 2022 Base Image\nCreated on: ${formatdate("EEE, DD MMM YYYY hh:mm:ss ZZZ", timestamp())}"
-  os                      = "win10"
-  cloud_init              = true
-  cloud_init_storage_pool = var.cloud_init_storage
+  template_name        = var.base_template_name
+  vm_name              = "win-instance-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
+  template_description = "Windows 2022 Base Image\nCreated on: ${formatdate("EEE, DD MMM YYYY hh:mm:ss ZZZ", timestamp())}"
+  os                   = "win11"
 
   // HARDWARE CONFIGURATION
   memory          = var.memory
@@ -303,7 +307,87 @@ source "proxmox-iso" "base" {
 }
 
 build {
-  sources = []
+  sources = [
+    "source.proxmox-iso.base"
+  ]
+
+  provisioner "windows-restart" {
+  }
+
+  provisioner "windows-update" {
+    search_criteria = "IsInstalled=0"
+    filters = [
+      "exclude:$_.Title -like '*Preview*'",
+      "include:$true",
+    ]
+  }
+
+  provisioner "windows-restart" {
+    restart_timeout = "10m"
+  }
+
+  provisioner "powershell" {
+    script = "../scripts/build/Install-CloudBase.ps1"
+  }
+
+  provisioner "file" {
+    source      = "../assets/base-image/config/"
+    destination = "C://Program Files//Cloudbase Solutions//Cloudbase-Init//conf"
+  }
+
+  provisioner "powershell" {
+    inline = [
+      "Set-Service cloudbase-init -StartupType Manual",
+      "Stop-Service cloudbase-init -Force -Confirm:$false"
+    ]
+  }
+}
+
+source "proxmox-clone" "runner" {
+  // PROXMOX CONNECTION CONFIGURATION
+  proxmox_url              = var.proxmox_url
+  insecure_skip_tls_verify = true
+  username                 = var.proxmox_user
+  password                 = var.proxmox_password
+  node                     = var.node
+
+  // CLONE CONFIGURATION
+  clone_vm                = var.base_template_name
+  full_clone              = false
+  vm_name                 = "win-instance-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
+  template_name           = var.runner_template_name
+  template_description    = "Windows VM cloned from base template\nCreated on: ${formatdate("EEE, DD MMM YYYY hh:mm:ss ZZZ", timestamp())}"
+  os                      = "win11"
+  cloud_init              = true
+  cloud_init_storage_pool = var.cloud_init_storage
+
+  // HARDWARE CONFIGURATION
+  memory          = var.memory
+  cores           = var.cores
+  sockets         = var.socket
+  cpu_type        = "host"
+  scsi_controller = "virtio-scsi-pci"
+
+
+  // NETWORK CONFIGURATION
+  network_adapters {
+    model  = "virtio"
+    bridge = var.bridge
+  }
+
+
+  // COMMUNICATION CONFIGURATION
+  communicator   = "winrm"
+  winrm_username = var.install_user
+  winrm_password = var.install_password
+  winrm_timeout  = "30m"
+  winrm_port     = "5986"
+  winrm_use_ssl  = true
+  winrm_insecure = true
+}
+
+build {
+  sources = [source.proxmox-iso.runner]
 
   provisioner "powershell" {
     inline = [
@@ -572,9 +656,8 @@ build {
 
   provisioner "powershell" {
     inline = [
-      "if( Test-Path $env:SystemRoot\\System32\\Sysprep\\unattend.xml ){ rm $env:SystemRoot\\System32\\Sysprep\\unattend.xml -Force}",
-      "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /mode:vm /quiet /quit",
-      "while($true) { $imageState = Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State | Select ImageState; if($imageState.ImageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { Write-Output $imageState.ImageState; Start-Sleep -s 10 } else { break } }"
+      "Set-Location -Path \"C:\\Program Files\\Cloudbase Solutions\\Cloudbase-Init\\conf\"",
+      "C:\\Windows\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /unattend:unattend.xml"
     ]
   }
 
