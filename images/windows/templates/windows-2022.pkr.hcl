@@ -203,6 +203,105 @@ variable "install_user" {
   default = "installer"
 }
 
+source "proxmox-iso" "base" {
+
+  // PROXMOX CONNECTION CONFIGURATION
+  proxmox_url              = var.proxmox_url
+  insecure_skip_tls_verify = var.proxmox_insecure
+  username                 = var.proxmox_user
+  password                 = var.proxmox_password
+  node                     = var.node
+
+  // BIOS & MACHINE CONFIGURATION
+  bios    = "ovmf"
+  machine = "q35"
+
+  efi_config {
+    efi_storage_pool  = var.efi_storage
+    pre_enrolled_keys = true
+    efi_type          = "4m"
+  }
+
+  // BOOT MEDIA CONFIGURATION
+  boot_iso {
+    iso_file         = var.windows_iso
+    iso_storage_pool = var.iso_storage
+    unmount          = true
+  }
+
+  additional_iso_files {
+    iso_file         = var.virtio_win_iso
+    iso_storage_pool = var.iso_storage
+    unmount          = true
+    type             = "sata"
+    index            = 1
+  }
+
+  additional_iso_files {
+    cd_files = ["../scripts/build/Configure-RemotingForAnsible.ps1"]
+    cd_content = {
+      "autounattend.xml" = templatefile("../assets/base-image/unattend.pkrtpl", {
+        password           = var.winrm_password,
+        cdrom_drive        = var.cdrom_drive,
+        user_data          = var.user_data,
+        timezone           = var.timezone,
+        index              = var.image_name
+        virtio_cdrom_drive = var.virtio_cdrom_drive
+      })
+    }
+    cd_label         = "Unattend"
+    iso_storage_pool = var.iso_storage
+    unmount          = true
+    type             = "sata"
+    index            = 0
+  }
+
+  // VM TEMPLATE CONFIGURATION
+  template_name           = var.base_template_name
+  vm_name                 = "win-instance-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
+  template_description    = "Windows 2022 Base Image\nCreated on: ${formatdate("EEE, DD MMM YYYY hh:mm:ss ZZZ", timestamp())}"
+  os                      = "win10"
+  cloud_init              = true
+  cloud_init_storage_pool = var.cloud_init_storage
+
+  // HARDWARE CONFIGURATION
+  memory          = var.memory
+  cores           = var.cores
+  sockets         = var.socket
+  cpu_type        = "host"
+  scsi_controller = "virtio-scsi-pci"
+  serials         = ["socket"]
+
+  // NETWORK CONFIGURATION
+  network_adapters {
+    model  = "virtio"
+    bridge = var.bridge
+  }
+
+  // STORAGE CONFIGURATION
+  disks {
+    storage_pool = var.disk_storage
+    type         = "scsi"
+    disk_size    = var.disk_size_gb
+    cache_mode   = "writeback"
+    format       = "raw"
+  }
+
+  // WINRM COMMUNICATION CONFIGURATION
+  communicator   = "winrm"
+  winrm_username = var.install_user
+  winrm_password = var.install_password
+  winrm_timeout  = "1h"
+  winrm_port     = "5986"
+  winrm_use_ssl  = true
+  winrm_insecure = true
+
+  // BOOT CONFIGURATION
+  boot         = "order=scsi0"
+  boot_wait    = "3s"
+  boot_command = ["<enter><enter>", "\\efi\\boot\\bootx64.efi<enter><wait>", "<enter>"]
+}
+
 build {
   sources = []
 
