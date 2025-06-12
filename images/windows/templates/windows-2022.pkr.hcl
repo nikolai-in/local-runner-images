@@ -206,7 +206,7 @@ variable "install_password" {
 
 variable "install_user" {
   type    = string
-  default = "installer"
+  default = "Administrator"
 }
 
 source "proxmox-iso" "base" {
@@ -247,7 +247,8 @@ source "proxmox-iso" "base" {
     cd_files = ["../scripts/build/Configure-RemotingForAnsible.ps1"]
     cd_content = {
       "autounattend.xml" = templatefile("../assets/base-image/unattend.pkrtpl", {
-        password           = var.winrm_password,
+        user               = var.install_user,
+        password           = var.install_password,
         cdrom_drive        = var.cdrom_drive,
         license_key        = var.license_key,
         timezone           = var.timezone,
