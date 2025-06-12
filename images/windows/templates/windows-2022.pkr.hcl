@@ -1,3 +1,162 @@
+packer {
+  required_plugins {
+    proxmox = {
+      version = "~> 1"
+      source  = "github.com/hashicorp/proxmox"
+    }
+    windows-update = {
+      version = "~> 0.16.10"
+      source  = "github.com/rgl/windows-update"
+    }
+  }
+}
+
+// Proxmox related variables
+variable "proxmox_url" {
+  type        = string
+  description = "Proxmox Server URL"
+}
+
+variable "proxmox_insecure" {
+  type        = bool
+  description = "Allow insecure connections to Proxmox"
+  default     = false
+}
+
+variable "proxmox_user" {
+  type        = string
+  description = "Proxmox username"
+  sensitive   = true
+}
+
+variable "proxmox_password" {
+  type        = string
+  description = "Proxmox password"
+  sensitive   = true
+}
+
+variable "node" {
+  type        = string
+  description = "Proxmox cluster node"
+}
+
+// Proxmox storage related variables
+variable "iso_storage" {
+  type        = string
+  description = "Proxmox storage location for iso files"
+  default     = "local"
+}
+
+variable "disk_storage" {
+  type        = string
+  description = "Disk storage location"
+  default     = "local-lvm"
+}
+
+variable "efi_storage" {
+  type        = string
+  description = "Location of EFI storage on proxmox host"
+  default     = "local-lvm"
+}
+
+variable "cloud_init_storage" {
+  type        = string
+  description = "Location of cloud-init files/iso/yaml config"
+  default     = "local-lvm"
+}
+
+// VM hardware related variables
+variable "memory" {
+  type        = number
+  description = "Amount of RAM in MB"
+  default     = 8192
+}
+
+variable "ballooning_minimum" {
+  type        = number
+  description = "Minimum amount of RAM in MB for ballooning"
+  default     = 2048
+}
+
+variable "cores" {
+  type        = number
+  description = "Amount of CPU cores"
+  default     = 2
+}
+
+variable "socket" {
+  type        = number
+  description = "Amount of CPU sockets"
+  default     = 1
+}
+
+variable "disk_size_gb" {
+  type        = string
+  description = "The size of the disk, including a unit suffix, such as 10G to indicate 10 gigabytes"
+  default     = "256G"
+}
+
+variable "bridge" {
+  type        = string
+  description = "Network bridge name"
+  default     = "vmbr0"
+}
+
+// Windows related variables
+
+variable "windows_iso" {
+  type        = string
+  description = "Windows ISO file name"
+  default     = "en-us_windows_server_2022_eval_x64fre.iso"
+}
+
+variable "license_key" {
+  type        = string
+  description = "Windows license key, leave empty for evaluation version"
+  default     = ""
+  validation {
+    condition     = var.license_key == "" || can(regex("^([A-Za-z0-9]{5}-){4}[A-Za-z0-9]{5}$", var.license_key))
+    error_message = "The license_key must be either empty for evaluation version or in the format XXXXX-XXXXX-XXXXX-XXXXX-XXXXX."
+  }
+}
+
+variable "virtio_win_iso" {
+  type        = string
+  description = "Virtio-win ISO file"
+  default     = "virtio-win.iso"
+}
+
+variable "cdrom_drive" {
+  type        = string
+  description = "CD-ROM Drive letter for extra iso"
+  default     = "D:"
+}
+
+variable "virtio_cdrom_drive" {
+  type        = string
+  description = "CD-ROM Drive letter for virtio-win iso"
+  default     = "E:"
+}
+
+variable "timezone" {
+  type        = string
+  description = "Windows timezone"
+  default     = "UTC"
+}
+
+variable "base_template_name" {
+  type        = string
+  description = "Name for the base template in Proxmox"
+  default     = "win22-base"
+}
+
+variable "runner_template_name" {
+  type        = string
+  description = "Name for the runner template in Proxmox"
+  default     = "win22-runner"
+}
+
+// Build scripts related variables
 variable "agent_tools_directory" {
   type    = string
   default = "C:\\hostedtoolcache\\windows"
