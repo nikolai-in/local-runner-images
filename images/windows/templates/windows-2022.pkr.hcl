@@ -308,6 +308,8 @@ source "proxmox-iso" "base" {
 }
 
 build {
+  name = "base"
+
   sources = [
     "source.proxmox-iso.base"
   ]
@@ -388,6 +390,8 @@ source "proxmox-clone" "runner" {
 }
 
 build {
+  name = "runner"
+
   sources = [
     "source.proxmox-clone.runner"
   ]
