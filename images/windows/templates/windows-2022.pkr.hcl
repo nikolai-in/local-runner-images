@@ -387,7 +387,9 @@ source "proxmox-clone" "runner" {
 }
 
 build {
-  sources = [source.proxmox-iso.runner]
+  sources = [
+    "source.proxmox-clone.runner"
+  ]
 
   provisioner "powershell" {
     inline = [
