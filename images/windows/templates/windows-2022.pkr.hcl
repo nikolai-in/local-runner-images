@@ -387,6 +387,15 @@ source "proxmox-clone" "runner" {
   winrm_port     = "5986"
   winrm_use_ssl  = true
   winrm_insecure = true
+
+  // DISK FOR TEMP DIR
+  disks {
+    storage_pool = var.disk_storage
+    type         = "scsi"
+    disk_size    = "128G"
+    cache_mode   = "unsafe"
+    format       = "raw"
+  }
 }
 
 build {
@@ -398,7 +407,17 @@ build {
 
   provisioner "powershell" {
     inline = [
-      "New-Item -Path ${var.image_folder} -ItemType Directory -Force",
+      "New-Item -Path ${var.image_folder} -ItemType Directory -Force"
+    ]
+  }
+
+  // Configure the temp disk before trying to create directories on it
+  provisioner "powershell" {
+    scripts = ["${path.root}/../scripts/build/Configure-TempDisk.ps1"]
+  }
+
+  provisioner "powershell" {
+    inline = [
       "New-Item -Path ${var.temp_dir} -ItemType Directory -Force"
     ]
   }
