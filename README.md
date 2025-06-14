@@ -12,3 +12,13 @@ Fork of [GitHub Action's VM templates](https://github.com/actions/runner-images)
 | macOS               | Not planned |
 
 I am not going to work on bringing other images, but if you want to contribute, feel free to open a PR.
+
+## Differences from original images
+
+> there might be more, my sleep deprived ass might have forgor
+
+### Removed workloads, components and extensions
+
+- "Component.UnityEngine.x64"
+- "Component.Unreal.Android"
+- "Component.MDD.Linux.GCC.arm"
